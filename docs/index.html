@@ -23,11 +23,47 @@
                 align-items: center;
                 min-height: 100vh;
                 padding: 2rem 1.5rem;
+                position: relative;
+                overflow: hidden;
             }
             .container {
                 display: flex;
                 flex-direction: column;
                 width: fit-content;
+                position: relative;
+                z-index: 1;
+            }
+            .container::before {
+                content: "";
+                position: absolute;
+                inset: -2rem;
+                z-index: -1;
+                backdrop-filter: blur(6px);
+                mask-image:
+                    linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent),
+                    linear-gradient(to bottom, transparent, black 15px, black calc(100% - 15px), transparent);
+                mask-composite: intersect;
+                -webkit-mask-image:
+                    linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent),
+                    linear-gradient(to bottom, transparent, black 15px, black calc(100% - 15px), transparent);
+                -webkit-mask-composite: source-in;
+            }
+            @keyframes fade {
+                0% {
+                    opacity: 0;
+                }
+                50% {
+                    opacity: 0.75;
+                }
+                100% {
+                    opacity: 0;
+                }
+            }
+            .bg-logo {
+                position: absolute;
+                pointer-events: none;
+                opacity: 0;
+                animation: fade var(--duration) ease-in-out forwards;
             }
             .header {
                 text-align: left;
@@ -134,5 +170,32 @@ sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
                 }
             </script>
         </div>
+        <script>
+            function spawnLogo() {
+                const img = document.createElement("img");
+                img.src = "assets/claude-ai-logo.png";
+                img.className = "bg-logo";
+                const size = 40 + Math.random() * 80;
+                const duration = 3 + Math.random() * 2;
+                img.style.width = size + "px";
+                img.style.height = size + "px";
+                img.style.top =
+                    Math.random() * (window.innerHeight - size) + "px";
+                img.style.left =
+                    Math.random() * (window.innerWidth - size) + "px";
+                img.style.setProperty("--duration", duration + "s");
+                document.body.appendChild(img);
+                img.addEventListener("animationend", () => img.remove());
+            }
+            let lastSpawn = 0;
+            function loop(timestamp) {
+                if (timestamp - lastSpawn >= 400) {
+                    spawnLogo();
+                    lastSpawn = timestamp;
+                }
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+        </script>
     </body>
 </html>
