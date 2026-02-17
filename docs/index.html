@@ -49,29 +49,14 @@
                     linear-gradient(to bottom, transparent, black 15px, black calc(100% - 15px), transparent);
                 -webkit-mask-composite: source-in;
             }
-            @keyframes fade {
-                0% {
-                    opacity: 0;
-                }
-                50% {
-                    opacity: 0.75;
-                }
-                100% {
-                    opacity: 0;
-                }
-            }
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            .bg-logo {
-                position: absolute;
+            #bg-canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
                 pointer-events: none;
-                opacity: 0;
-                animation: fade var(--duration) ease-in-out forwards,
-                           spin 8s linear infinite;
-                animation-delay: 0s, var(--spin-delay);
-                animation-direction: normal, var(--spin-dir);
+                z-index: 0;
             }
             .header {
                 text-align: left;
@@ -170,6 +155,7 @@
         </style>
     </head>
     <body>
+        <canvas id="bg-canvas"></canvas>
         <div class="container">
             <div class="header">
                 <h1>Claude Skills</h1>
@@ -199,36 +185,78 @@ sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
             </script>
         </div>
         <script>
+            const canvas = document.getElementById("bg-canvas");
+            const ctx = canvas.getContext("2d");
+            const logo = new Image();
+            logo.src = "assets/claude-ai-logo.png";
+
+            function resize() {
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = window.innerWidth * dpr;
+                canvas.height = window.innerHeight * dpr;
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+            resize();
+            window.addEventListener("resize", resize);
+
             const isMobile = () => window.innerWidth <= 600;
-            function spawnLogo() {
-                const img = document.createElement("img");
-                img.src = "assets/claude-ai-logo.png";
-                img.className = "bg-logo";
+            const particles = [];
+            let spawnAcc = 0;
+
+            function spawn() {
                 const mobile = isMobile();
                 const size = mobile ? 20 + Math.random() * 40 : 40 + Math.random() * 80;
                 const duration = mobile ? 2 + Math.random() * 2 : 3 + Math.random() * 2;
-                img.style.width = size + "px";
-                img.style.height = size + "px";
-                img.style.top =
-                    Math.random() * (window.innerHeight - size) + "px";
-                img.style.left =
-                    Math.random() * (window.innerWidth - size) + "px";
-                img.style.setProperty("--spin-dir", Math.random() < 0.5 ? "normal" : "reverse");
-                img.style.setProperty("--spin-delay", `-${Math.random() * 8}s`);
-                img.style.setProperty("--duration", duration + "s");
-                document.body.appendChild(img);
-                img.addEventListener("animationend", () => img.remove());
+                particles.push({
+                    x: Math.random() * (window.innerWidth - size),
+                    y: Math.random() * (window.innerHeight - size),
+                    size,
+                    duration,
+                    elapsed: 0,
+                    spinDir: Math.random() < 0.5 ? 1 : -1,
+                    spinPhase: Math.random() * Math.PI * 2,
+                });
             }
-            let lastSpawn = 0;
-            function loop(timestamp) {
-                const interval = isMobile() ? 600 : 400;
-                if (timestamp - lastSpawn >= interval) {
-                    spawnLogo();
-                    lastSpawn = timestamp;
+
+            let prev = 0;
+            function frame(timestamp) {
+                let dt = prev ? (timestamp - prev) / 1000 : 0;
+                if (dt > 0.1) dt = 0.1;
+                prev = timestamp;
+
+                spawnAcc += dt;
+                const interval = isMobile() ? 0.6 : 0.4;
+                while (spawnAcc >= interval) {
+                    spawn();
+                    spawnAcc -= interval;
                 }
-                requestAnimationFrame(loop);
+
+                ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.elapsed += dt;
+                    if (p.elapsed >= p.duration) {
+                        particles.splice(i, 1);
+                        continue;
+                    }
+                    const t = p.elapsed / p.duration;
+                    const opacity = 0.75 * (1 - Math.cos(2 * Math.PI * t)) / 2;
+                    const angle = p.spinDir * ((timestamp / 1000) / 8 * Math.PI * 2 + p.spinPhase);
+                    const cx = p.x + p.size / 2;
+                    const cy = p.y + p.size / 2;
+
+                    ctx.save();
+                    ctx.globalAlpha = opacity;
+                    ctx.translate(cx, cy);
+                    ctx.rotate(angle);
+                    ctx.drawImage(logo, -p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                }
+
+                requestAnimationFrame(frame);
             }
-            requestAnimationFrame(loop);
+            requestAnimationFrame(frame);
         </script>
     </body>
 </html>
