@@ -9,13 +9,16 @@ Reference: [Anthropic Official Documentation on Skills](https://platform.claude.
 ### Quick install (no clone needed)
 
 ```sh
-curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- <skill-name>
+curl -fsSL mhbxyz.github.io/skills/install.sh | sh
 ```
+
+This launches **interactive mode**: lists available skills with descriptions and lets you pick by number.
 
 ### Options
 
 ```sh
-sh -s -- <skill-name>          # local (current project)
+sh -s --                       # interactive mode (recommended)
+sh -s -- <skill-name>          # install directly by name
 sh -s -- -g <skill-name>       # global (~/.claude/skills/)
 sh -s -- -l                    # list available skills
 sh -s -- -u <skill-name>       # uninstall

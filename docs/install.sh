@@ -77,12 +77,12 @@ Options:
   -h, --help         Show this help
 
 Examples:
-  install.sh elite-coder                     # install locally
+  install.sh                                 # interactive mode (recommended)
+  install.sh elite-coder                     # install directly by name
   install.sh -g elite-coder                  # install globally
   install.sh -l                              # list available skills
   install.sh -u elite-coder                  # uninstall
   install.sh elite-coder other-skill         # install multiple skills
-  install.sh                                 # interactive mode
 
   # One-liner (no clone needed):
   curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- elite-coder

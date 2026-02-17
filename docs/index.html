@@ -159,10 +159,11 @@
             <div class="code-block">
                 <pre
                     class="code-main"
-                ><code>curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- &lt;skill-name&gt;</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></pre>
+                ><code>curl -fsSL mhbxyz.github.io/skills/install.sh | sh</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></pre>
                 <pre
                     class="code-options"
-                ><code>sh -s -- &lt;skill-name&gt;         # local (current project)
+                ><code>sh                            # interactive mode (recommended)
+sh -s -- &lt;skill-name&gt;         # install directly by name
 sh -s -- -g &lt;skill-name&gt;      # global (~/.claude/skills/)
 sh -s -- -l                   # list available skills
 sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
