@@ -1,10 +1,19 @@
 #!/bin/sh
-set -e
 
-# =============================================================================
 # Claude Code Skills Installer
 # https://github.com/mhbxyz/skills
-# =============================================================================
+
+set -eu
+
+# ── Constants ──
+
+RESET="\033[0m"
+GREEN="\033[0;32m"
+RED="\033[0;31m"
+YELLOW="\033[0;33m"
+BLUE="\033[0;34m"
+MAGENTA="\033[0;35m"
+CYAN="\033[0;36m"
 
 REPO_OWNER="mhbxyz"
 REPO_NAME="skills"
@@ -14,68 +23,92 @@ TARBALL_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/refs/heads/${
 TREE_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees/${BRANCH}?recursive=1"
 RAW_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}"
 
-# -- Utilities ----------------------------------------------------------------
+# ── Temp file cleanup ──
 
-msg() {
-    printf '%s\n' "$1"
+TMPFILES=""
+
+cleanup() {
+  for _f in $TMPFILES; do
+    rm -rf "$_f"
+  done
 }
+
+trap cleanup EXIT INT TERM
+
+register_tmp() {
+  TMPFILES="$TMPFILES $1"
+}
+
+# ── Utility functions ──
 
 die() {
-    printf 'error: %s\n' "$1" >&2
-    exit 1
+  printf "${RED}error: %s${RESET}\n" "$*" >&2
+  exit 1
 }
 
-has_cmd() {
-    command -v "$1" >/dev/null 2>&1
+warn() {
+  printf "${YELLOW}warning: %s${RESET}\n" "$*" >&2
+}
+
+info() {
+  printf "${BLUE}%s${RESET}\n" "$*"
+}
+
+success() {
+  printf "${GREEN}%s${RESET}\n" "$*"
+}
+
+# ── Helpers ──
+
+download_file() {
+  _url="$1" _dest="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$_url" -o "$_dest" || die "failed to download $_url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "$_dest" "$_url" || die "failed to download $_url"
+  else
+    die "curl or wget is required"
+  fi
+}
+
+download_to_stdout() {
+  _url="$1"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$_url" || die "failed to download $_url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$_url" || die "failed to download $_url"
+  else
+    die "curl or wget is required"
+  fi
 }
 
 extract_description() {
-    sed -n '/^description:/{
-        s/^description: *>* *//
-        /./p
-        :loop
-        n
-        /^  /!q
-        s/^  *//
-        p
-        b loop
-    }' | tr '\n' ' ' | sed 's/  */ /g;s/^ *//;s/ *$//'
+  sed -n '/^description:/{
+    s/^description: *>* *//
+    /./p
+    :loop
+    n
+    /^  /!q
+    s/^  *//
+    p
+    b loop
+  }' | tr '\n' ' ' | sed 's/  */ /g;s/^ *//;s/ *$//'
 }
 
 truncate_text() {
-    local max="${1:-60}" text
-    read -r text || true
-    if [ "${#text}" -gt "$max" ]; then
-        printf '%s...' "$(printf '%.'"$max"'s' "$text")"
-    else
-        printf '%s' "$text"
-    fi
+  _max="${1:-60}"
+  read -r _text || true
+  if [ "${#_text}" -gt "$_max" ]; then
+    printf '%s...' "$(printf '%.'"$_max"'s' "$_text")"
+  else
+    printf '%s' "$_text"
+  fi
 }
 
-fetch_url() {
-    local url="$1"
-    local dest="$2" # empty = stdout
-    if has_cmd curl; then
-        if [ -n "$dest" ]; then
-            curl -fsSL -o "$dest" "$url" || die "failed to download $url"
-        else
-            curl -fsSL "$url" || die "failed to download $url"
-        fi
-    elif has_cmd wget; then
-        if [ -n "$dest" ]; then
-            wget -qO "$dest" "$url" || die "failed to download $url"
-        else
-            wget -qO- "$url" || die "failed to download $url"
-        fi
-    else
-        die "curl or wget is required"
-    fi
-}
-
-# -- Usage --------------------------------------------------------------------
+# ── Help ──
 
 usage() {
-    cat <<'EOF'
+  cat <<'EOF'
 Usage: install.sh [OPTIONS] [SKILL...]
 
 Install Claude Code skills from github.com/mhbxyz/skills.
@@ -100,231 +133,259 @@ Examples:
 EOF
 }
 
-# -- Detection ----------------------------------------------------------------
+# ── Detection ──
 
 is_local_repo() {
-    [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/.git" ] && [ -f "$SCRIPT_DIR/install.sh" ]
+  [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/.git" ] && [ -f "$SCRIPT_DIR/install.sh" ]
 }
 
 detect_skills_local() {
-    local dir
-    for dir in "$SCRIPT_DIR/$SKILLS_SUBDIR"/*/; do
-        [ -f "${dir}SKILL.md" ] && basename "$dir"
-    done
+  for _dir in "$SCRIPT_DIR/$SKILLS_SUBDIR"/*/; do
+    if [ -f "${_dir}SKILL.md" ]; then
+      basename "$_dir"
+    fi
+  done
 }
 
 detect_skills_remote() {
-    local json
-    json=$(fetch_url "$TREE_API_URL") || die "failed to fetch skill list from GitHub"
-    printf '%s\n' "$json" \
-        | grep -o "\"path\": *\"${SKILLS_SUBDIR}/[^\"/]*/SKILL\.md\"" \
-        | sed "s/\"path\": *\"${SKILLS_SUBDIR}\///;s/\/SKILL\.md\"//"
+  _json=$(download_to_stdout "$TREE_API_URL")
+  printf '%s\n' "$_json" \
+    | grep -o "\"path\": *\"${SKILLS_SUBDIR}/[^\"/]*/SKILL\.md\"" \
+    | sed "s/\"path\": *\"${SKILLS_SUBDIR}\///;s/\/SKILL\.md\"//"
 }
 
 get_skill_description() {
-    local skill="$1"
-    if is_local_repo; then
-        extract_description < "$SCRIPT_DIR/$SKILLS_SUBDIR/$skill/SKILL.md"
-    else
-        fetch_url "$RAW_URL/$SKILLS_SUBDIR/$skill/SKILL.md" | extract_description
-    fi
+  _skill="$1"
+  if is_local_repo; then
+    extract_description < "$SCRIPT_DIR/$SKILLS_SUBDIR/$_skill/SKILL.md"
+  else
+    _raw=$(download_to_stdout "$RAW_URL/$SKILLS_SUBDIR/$_skill/SKILL.md" 2>/dev/null) || true
+    printf '%s\n' "$_raw" | extract_description
+  fi
 }
 
 list_skills() {
-    local skills
-    if is_local_repo; then
-        skills=$(detect_skills_local)
+  if is_local_repo; then
+    _skills=$(detect_skills_local)
+  else
+    _skills=$(detect_skills_remote)
+  fi
+  [ -z "$_skills" ] && die "no skills found"
+  info "Available skills:"
+  for _s in $_skills; do
+    _desc=$(get_skill_description "$_s" | truncate_text 60)
+    if [ -n "$_desc" ]; then
+      printf '  %-16s %s\n' "$_s" "$_desc"
     else
-        skills=$(detect_skills_remote)
+      printf '  %s\n' "$_s"
     fi
-    if [ -z "$skills" ]; then
-        die "no skills found"
-    fi
-    msg "Available skills:"
-    printf '%s\n' "$skills" | while read -r s; do
-        local desc
-        desc=$(get_skill_description "$s" | truncate_text 60)
-        if [ -n "$desc" ]; then
-            printf '  %-16s %s\n' "$s" "$desc"
-        else
-            printf '  %s\n' "$s"
-        fi
-    done
+  done
 }
 
-# -- Resolve target -----------------------------------------------------------
+# ── Resolve and validate ──
 
 resolve_target_dir() {
-    if [ "$GLOBAL" = 1 ]; then
-        printf '%s' "$HOME/.claude/skills"
-    else
-        printf '%s' ".claude/skills"
-    fi
+  if [ "$GLOBAL" = 1 ]; then
+    printf '%s' "$HOME/.claude/skills"
+  else
+    printf '%s' ".claude/skills"
+  fi
 }
-
-# -- Validate -----------------------------------------------------------------
 
 validate_skill() {
-    local skill="$1"
-    local available
-    if is_local_repo; then
-        available=$(detect_skills_local)
-    else
-        available=$(detect_skills_remote)
-    fi
-    if ! printf '%s\n' "$available" | grep -qx "$skill"; then
-        die "skill '$skill' not found (use --list to see available skills)"
-    fi
+  _vskill="$1"
+  if is_local_repo; then
+    _vavailable=$(detect_skills_local)
+  else
+    _vavailable=$(detect_skills_remote)
+  fi
+  if ! printf '%s\n' "$_vavailable" | grep -qx "$_vskill"; then
+    die "skill '$_vskill' not found (use --list to see available skills)"
+  fi
 }
 
-# -- Install ------------------------------------------------------------------
+# ── Install ──
 
 install_skill_local() {
-    local skill="$1"
-    local target="$2"
-    local dest="$target/$skill"
-    rm -rf "$dest"
-    mkdir -p "$target"
-    cp -r "$SCRIPT_DIR/$SKILLS_SUBDIR/$skill" "$dest"
-    msg "installed $skill -> $dest"
+  _skill="$1"
+  _target="$2"
+  _dest="$_target/$_skill"
+  rm -rf "$_dest"
+  mkdir -p "$_target"
+  cp -r "$SCRIPT_DIR/$SKILLS_SUBDIR/$_skill" "$_dest"
+  success "installed $_skill -> $_dest"
 }
 
 install_skill_remote() {
-    local skill="$1"
-    local target="$2"
-    local dest="$target/$skill"
-    local tmpdir
+  _skill="$1"
+  _target="$2"
+  _tmpdir=$(mktemp -d)
+  register_tmp "$_tmpdir"
 
-    tmpdir=$(mktemp -d)
-    # shellcheck disable=SC2064
-    trap "rm -rf '$tmpdir'" EXIT
+  download_file "$TARBALL_URL" "$_tmpdir/archive.tar.gz"
 
-    fetch_url "$TARBALL_URL" "$tmpdir/archive.tar.gz"
+  _prefix="${REPO_NAME}-${BRANCH}"
+  tar -xzf "$_tmpdir/archive.tar.gz" -C "$_tmpdir" "${_prefix}/${SKILLS_SUBDIR}/${_skill}/" 2>/dev/null \
+    || die "skill '$_skill' not found in archive"
 
-    local prefix="${REPO_NAME}-${BRANCH}"
-    tar -xzf "$tmpdir/archive.tar.gz" -C "$tmpdir" "${prefix}/${SKILLS_SUBDIR}/${skill}/" 2>/dev/null \
-        || die "skill '$skill' not found in archive"
+  _dest="$_target/$_skill"
+  rm -rf "$_dest"
+  mkdir -p "$_target"
+  cp -r "$_tmpdir/${_prefix}/${SKILLS_SUBDIR}/${_skill}" "$_dest"
 
-    rm -rf "$dest"
-    mkdir -p "$target"
-    cp -r "$tmpdir/${prefix}/${SKILLS_SUBDIR}/${skill}" "$dest"
-
-    rm -rf "$tmpdir"
-    trap - EXIT
-
-    msg "installed $skill -> $dest"
+  success "installed $_skill -> $_dest"
 }
 
 install_skill() {
-    local skill="$1"
-    local target
-    target=$(resolve_target_dir)
+  _skill="$1"
+  _target=$(resolve_target_dir)
 
-    validate_skill "$skill"
+  validate_skill "$_skill"
 
-    if is_local_repo; then
-        install_skill_local "$skill" "$target"
-    else
-        install_skill_remote "$skill" "$target"
-    fi
+  if is_local_repo; then
+    install_skill_local "$_skill" "$_target"
+  else
+    install_skill_remote "$_skill" "$_target"
+  fi
 }
 
-# -- Uninstall ----------------------------------------------------------------
+# ── Uninstall ──
 
 uninstall_skill() {
-    local skill="$1"
-    local target
-    target=$(resolve_target_dir)
-    local dest="$target/$skill"
+  _skill="$1"
+  _target=$(resolve_target_dir)
+  _dest="$_target/$_skill"
 
-    if [ ! -d "$dest" ]; then
-        die "skill '$skill' is not installed in $target"
-    fi
+  if [ ! -d "$_dest" ]; then
+    die "skill '$_skill' is not installed in $_target"
+  fi
 
-    rm -rf "$dest"
-    msg "uninstalled $skill from $dest"
+  rm -rf "$_dest"
+  success "uninstalled $_skill from $_dest"
 }
 
-# -- Interactive --------------------------------------------------------------
+# ── Menu ──
 
-interactive_mode() {
-    if [ ! -t 0 ] && [ ! -e /dev/tty ]; then
-        die "no skill specified (use --list to see available skills)"
-    fi
+random_phrase() {
+  _phrases="YELLOW|There is no secret. Move along.
+CYAN|Mitochondria is the powerhouse of the cell.
+GREEN|A monad is just a monoid in the category of endofunctors.
+MAGENTA|There are only two hard things: cache invalidation, naming things, and off-by-one errors.
+BLUE|It works on my machine.
+RED|Have you tried turning it off and on again?
+YELLOW|The cake is a lie.
+CYAN|127.0.0.1 is where the heart is.
+GREEN|To mass-assign or not to mass-assign, that is the CVE.
+MAGENTA|In case of fire: git commit, git push, leave building."
+  _count=10
+  _pick=$(( $(od -An -tu4 -N4 /dev/urandom) % _count + 1 ))
+  _line=$(printf '%s\n' "$_phrases" | sed -n "${_pick}p")
+  _color_name="${_line%%|*}"
+  _text="${_line#*|}"
+  eval "_color=\$$_color_name"
+  printf "  ${_color}%s${RESET}" "$_text"
+}
 
-    local skills
-    if is_local_repo; then
-        skills=$(detect_skills_local)
+show_menu() {
+  if [ ! -t 0 ] && [ ! -e /dev/tty ]; then
+    die "no skill specified (use --list to see available skills)"
+  fi
+
+  if is_local_repo; then
+    _skills=$(detect_skills_local)
+  else
+    _skills=$(detect_skills_remote)
+  fi
+  [ -z "$_skills" ] && die "no skills found"
+
+  info "Available skills:" >/dev/tty
+  printf "\n" >/dev/tty
+
+  _i=0
+  _skill_list=""
+  for _s in $_skills; do
+    _i=$((_i + 1))
+    _skill_list="$_skill_list $_s"
+    _desc=$(get_skill_description "$_s" | truncate_text 50)
+    if [ -n "$_desc" ]; then
+      printf '  %d) %-16s %s\n' "$_i" "$_s" "$_desc" >/dev/tty
     else
-        skills=$(detect_skills_remote)
+      printf '  %d) %s\n' "$_i" "$_s" >/dev/tty
     fi
-    if [ -z "$skills" ]; then
-        die "no skills found"
+  done
+  _skill_list="${_skill_list# }"
+  _count="$_i"
+
+  printf "\n" >/dev/tty
+  printf "  a) All skills\n" >/dev/tty
+  printf "  q) Quit\n" >/dev/tty
+  printf "\n$(random_phrase)\n" >/dev/tty
+  printf "\nSelect skills to install (e.g. 1 3 or a or q): " >/dev/tty
+  read -r _choice </dev/tty
+
+  if [ "$_choice" = "q" ] || [ "$_choice" = "Q" ]; then
+    return 1
+  fi
+
+  if [ "$_choice" = "a" ] || [ "$_choice" = "A" ]; then
+    printf '%s' "$_skill_list"
+    return
+  fi
+
+  _selected=""
+  for _num in $_choice; do
+    case "$_num" in
+      *[!0-9]*) die "invalid selection: $_num" ;;
+    esac
+    if [ "$_num" -lt 1 ] || [ "$_num" -gt "$_count" ]; then
+      die "selection out of range: $_num (1-$_count)"
     fi
-
-    local count=0
-    local skill_list=""
-    msg "Available skills:"
-    msg ""
-    printf '%s\n' "$skills" | while read -r s; do
-        count=$((count + 1))
-        local desc
-        desc=$(get_skill_description "$s" | truncate_text 50)
-        if [ -n "$desc" ]; then
-            printf '  %d) %-16s %s\n' "$count" "$s" "$desc"
-        else
-            printf '  %d) %s\n' "$count" "$s"
-        fi
+    _i=0
+    for _s in $_skill_list; do
+      _i=$((_i + 1))
+      if [ "$_i" -eq "$_num" ]; then
+        _selected="$_selected $_s"
+        break
+      fi
     done
-
-    # rebuild count and indexed list outside subshell
-    count=0
-    skill_list=""
-    for s in $skills; do
-        count=$((count + 1))
-        skill_list="$skill_list $s"
-    done
-    skill_list="${skill_list# }"
-
-    printf 'Select skills to install (comma-separated, e.g. 1,2): '
-    local selection
-    read -r selection </dev/tty
-
-    if [ -z "$selection" ]; then
-        die "no selection made"
-    fi
-
-    local nums
-    nums=$(printf '%s' "$selection" | tr ',' ' ')
-
-    for num in $nums; do
-        case "$num" in
-            ''|*[^0-9]*) die "invalid selection: $num" ;;
-        esac
-        if [ "$num" -lt 1 ] || [ "$num" -gt "$count" ]; then
-            die "selection out of range: $num (1-$count)"
-        fi
-
-        local i=0
-        local chosen=""
-        for s in $skill_list; do
-            i=$((i + 1))
-            if [ "$i" -eq "$num" ]; then
-                chosen="$s"
-                break
-            fi
-        done
-
-        install_skill "$chosen"
-    done
+  done
+  printf '%s' "$_selected" | sed 's/^ //'
 }
 
-# -- Main ---------------------------------------------------------------------
+# ── Commands ──
 
-# Detect script directory (empty when piped via curl)
+cmd_install() {
+  if [ -z "$SKILLS" ]; then
+    _names=$(show_menu) || exit 0
+    [ -z "$_names" ] && die "no selection made"
+    for _skill in $_names; do
+      install_skill "$_skill"
+    done
+  else
+    for _skill in $SKILLS; do
+      install_skill "$_skill"
+    done
+  fi
+}
+
+cmd_list() {
+  list_skills
+}
+
+cmd_uninstall() {
+  if [ -z "$SKILLS" ]; then
+    die "no skill specified"
+  fi
+  for _skill in $SKILLS; do
+    uninstall_skill "$_skill"
+  done
+}
+
+# ── Main dispatch ──
+
 SCRIPT_DIR=""
 if [ -f "$0" ] 2>/dev/null; then
-    SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+  SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 fi
 
 GLOBAL=0
@@ -332,55 +393,37 @@ ACTION="install"
 SKILLS=""
 
 while [ $# -gt 0 ]; do
-    case "$1" in
-        -g|--global)
-            GLOBAL=1
-            shift
-            ;;
-        -l|--list)
-            ACTION="list"
-            shift
-            ;;
-        -u|--uninstall)
-            ACTION="uninstall"
-            shift
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        -*)
-            die "unknown option: $1 (see --help)"
-            ;;
-        *)
-            SKILLS="$SKILLS $1"
-            shift
-            ;;
-    esac
+  case "$1" in
+    -g|--global)
+      GLOBAL=1
+      shift
+      ;;
+    -l|--list)
+      ACTION="list"
+      shift
+      ;;
+    -u|--uninstall)
+      ACTION="uninstall"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -*)
+      die "unknown option: $1 (see --help)"
+      ;;
+    *)
+      SKILLS="$SKILLS $1"
+      shift
+      ;;
+  esac
 done
 
-# Trim leading space
 SKILLS="${SKILLS# }"
 
 case "$ACTION" in
-    list)
-        list_skills
-        ;;
-    install)
-        if [ -z "$SKILLS" ]; then
-            interactive_mode
-            exit 0
-        fi
-        for skill in $SKILLS; do
-            install_skill "$skill"
-        done
-        ;;
-    uninstall)
-        if [ -z "$SKILLS" ]; then
-            die "no skill specified"
-        fi
-        for skill in $SKILLS; do
-            uninstall_skill "$skill"
-        done
-        ;;
+  list)      cmd_list ;;
+  install)   cmd_install ;;
+  uninstall) cmd_uninstall ;;
 esac
