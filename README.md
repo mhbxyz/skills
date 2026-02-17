@@ -9,18 +9,16 @@ Reference: [Anthropic Official Documentation on Skills](https://platform.claude.
 ### Quick install (no clone needed)
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/mhbxyz/skills/main/install.sh | sh -s -- <skill-name>
+curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- <skill-name>
 ```
 
-### From cloned repo
+### Options
 
 ```sh
-git clone git@github.com:mhbxyz/skills.git
-cd skills
-./install.sh <skill-name>          # local (current project)
-./install.sh -g <skill-name>       # global (~/.claude/skills/)
-./install.sh -l                    # list available skills
-./install.sh -u <skill-name>       # uninstall
+sh -s -- <skill-name>          # local (current project)
+sh -s -- -g <skill-name>       # global (~/.claude/skills/)
+sh -s -- -l                    # list available skills
+sh -s -- -u <skill-name>       # uninstall
 ```
 
 ## elite-coder

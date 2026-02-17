@@ -70,8 +70,8 @@ Examples:
   install.sh elite-coder other-skill         # install multiple skills
 
   # One-liner (no clone needed):
-  curl -fsSL https://raw.githubusercontent.com/mhbxyz/skills/main/install.sh | sh -s -- elite-coder
-  curl -fsSL https://raw.githubusercontent.com/mhbxyz/skills/main/install.sh | sh -s -- -g elite-coder
+  curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- elite-coder
+  curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- -g elite-coder
 EOF
 }
 
