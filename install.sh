@@ -9,6 +9,7 @@ set -e
 REPO_OWNER="mhbxyz"
 REPO_NAME="skills"
 BRANCH="main"
+SKILLS_SUBDIR="src"
 TARBALL_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/refs/heads/${BRANCH}.tar.gz"
 TREE_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees/${BRANCH}?recursive=1"
 
@@ -82,7 +83,7 @@ is_local_repo() {
 
 detect_skills_local() {
     local dir
-    for dir in "$SCRIPT_DIR"/*/; do
+    for dir in "$SCRIPT_DIR/$SKILLS_SUBDIR"/*/; do
         [ -f "${dir}SKILL.md" ] && basename "$dir"
     done
 }
@@ -91,9 +92,8 @@ detect_skills_remote() {
     local json
     json=$(fetch_url "$TREE_API_URL") || die "failed to fetch skill list from GitHub"
     printf '%s\n' "$json" \
-        | grep -o '"path":"[^"]*SKILL\.md"' \
-        | sed 's/"path":"//;s/\/SKILL\.md"//' \
-        | grep -v '/'
+        | grep -o "\"path\":\"${SKILLS_SUBDIR}/[^\"/]*/SKILL\.md\"" \
+        | sed "s/\"path\":\"${SKILLS_SUBDIR}\///;s/\/SKILL\.md\"//"
 }
 
 list_skills() {
@@ -145,7 +145,7 @@ install_skill_local() {
     local dest="$target/$skill"
     rm -rf "$dest"
     mkdir -p "$target"
-    cp -r "$SCRIPT_DIR/$skill" "$dest"
+    cp -r "$SCRIPT_DIR/$SKILLS_SUBDIR/$skill" "$dest"
     msg "installed $skill -> $dest"
 }
 
@@ -162,12 +162,12 @@ install_skill_remote() {
     fetch_url "$TARBALL_URL" "$tmpdir/archive.tar.gz"
 
     local prefix="${REPO_NAME}-${BRANCH}"
-    tar -xzf "$tmpdir/archive.tar.gz" -C "$tmpdir" "${prefix}/${skill}/" 2>/dev/null \
+    tar -xzf "$tmpdir/archive.tar.gz" -C "$tmpdir" "${prefix}/${SKILLS_SUBDIR}/${skill}/" 2>/dev/null \
         || die "skill '$skill' not found in archive"
 
     rm -rf "$dest"
     mkdir -p "$target"
-    cp -r "$tmpdir/${prefix}/${skill}" "$dest"
+    cp -r "$tmpdir/${prefix}/${SKILLS_SUBDIR}/${skill}" "$dest"
 
     rm -rf "$tmpdir"
     trap - EXIT
