@@ -30,6 +30,7 @@
                 display: flex;
                 flex-direction: column;
                 width: fit-content;
+                max-width: 100%;
                 position: relative;
                 z-index: 1;
             }
@@ -147,6 +148,25 @@
                 background: #e8e8e8;
                 color: #333;
             }
+            @media (max-width: 600px) {
+                h1 {
+                    font-size: 2rem;
+                }
+                pre {
+                    padding: 1rem;
+                }
+                .code-main {
+                    padding-right: 1rem;
+                }
+                .code-main code {
+                    white-space: pre-wrap;
+                }
+                .copy-btn {
+                    position: static;
+                    display: block;
+                    margin-top: 0.5rem;
+                }
+            }
         </style>
     </head>
     <body>
@@ -179,12 +199,14 @@ sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
             </script>
         </div>
         <script>
+            const isMobile = () => window.innerWidth <= 600;
             function spawnLogo() {
                 const img = document.createElement("img");
                 img.src = "assets/claude-ai-logo.png";
                 img.className = "bg-logo";
-                const size = 40 + Math.random() * 80;
-                const duration = 3 + Math.random() * 2;
+                const mobile = isMobile();
+                const size = mobile ? 20 + Math.random() * 40 : 40 + Math.random() * 80;
+                const duration = mobile ? 2 + Math.random() * 2 : 3 + Math.random() * 2;
                 img.style.width = size + "px";
                 img.style.height = size + "px";
                 img.style.top =
@@ -199,7 +221,8 @@ sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
             }
             let lastSpawn = 0;
             function loop(timestamp) {
-                if (timestamp - lastSpawn >= 400) {
+                const interval = isMobile() ? 600 : 400;
+                if (timestamp - lastSpawn >= interval) {
                     spawnLogo();
                     lastSpawn = timestamp;
                 }
