@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Claude Skills by mhbxyz</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Libre+Baskerville:wght@700;900&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: #fff;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                padding: 2rem 1.5rem;
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+                width: fit-content;
+            }
+            .header {
+                text-align: left;
+            }
+            h1 {
+                font-family: "Libre Baskerville", serif;
+                color: #da7756;
+                font-size: 3.5rem;
+                font-weight: 900;
+                margin-bottom: 0.4rem;
+            }
+            .author {
+                font-family: "DM Sans", sans-serif;
+                font-size: 0.95rem;
+                color: #000;
+                margin-bottom: 0.5rem;
+            }
+            .tagline {
+                font-family: "DM Sans", sans-serif;
+                font-size: 1.05rem;
+                font-style: italic;
+                color: #888;
+                margin-bottom: 2rem;
+            }
+            .code-block {
+                display: flex;
+                flex-direction: column;
+                gap: 0.75rem;
+                text-align: left;
+            }
+            pre {
+                background: #f5f5f5;
+                padding: 1.25rem 1.5rem;
+                overflow-x: hidden;
+            }
+            pre code {
+                font-family:
+                    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+                    "Liberation Mono", monospace;
+                font-size: 0.85rem;
+                line-height: 1.6;
+                color: #333;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                white-space: pre-wrap;
+            }
+            .code-main {
+                position: relative;
+                border-radius: 8px;
+                padding-right: 4.5rem;
+            }
+            .code-main code {
+                white-space: pre;
+            }
+            .code-options {
+                border-radius: 8px;
+                background: #efefef;
+            }
+            .copy-btn {
+                position: absolute;
+                top: 0.75rem;
+                right: 0.75rem;
+                font-family: "DM Sans", sans-serif;
+                font-size: 0.75rem;
+                color: #666;
+                background: transparent;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 0.25rem 0.5rem;
+                cursor: pointer;
+            }
+            .copy-btn:hover {
+                background: #e8e8e8;
+                color: #333;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Claude Skills</h1>
+                <p class="author">authored by mhbxyz</p>
+                <p class="tagline">A collection of skills for Claude Code.</p>
+            </div>
+            <div class="code-block">
+                <pre
+                    class="code-main"
+                ><code>curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- &lt;skill-name&gt;</code><button class="copy-btn" onclick="copyCmd(this)">Copy</button></pre>
+                <pre
+                    class="code-options"
+                ><code>sh -s -- &lt;skill-name&gt;         # local (current project)
+sh -s -- -g &lt;skill-name&gt;      # global (~/.claude/skills/)
+sh -s -- -l                   # list available skills
+sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
+            </div>
+            <script>
+                function copyCmd(btn) {
+                    const text =
+                        btn.parentElement.querySelector("code").textContent;
+                    navigator.clipboard.writeText(text.trim());
+                    btn.textContent = "Copied!";
+                    setTimeout(() => (btn.textContent = "Copy"), 2000);
+                }
+            </script>
+        </div>
+    </body>
+</html>
