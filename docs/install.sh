@@ -42,6 +42,16 @@ extract_description() {
     }' | tr '\n' ' ' | sed 's/  */ /g;s/^ *//;s/ *$//'
 }
 
+truncate_text() {
+    local max="${1:-60}" text
+    read -r text || true
+    if [ "${#text}" -gt "$max" ]; then
+        printf '%s...' "$(printf '%.'"$max"'s' "$text")"
+    else
+        printf '%s' "$text"
+    fi
+}
+
 fetch_url() {
     local url="$1"
     local dest="$2" # empty = stdout
@@ -132,7 +142,13 @@ list_skills() {
     fi
     msg "Available skills:"
     printf '%s\n' "$skills" | while read -r s; do
-        msg "  $s"
+        local desc
+        desc=$(get_skill_description "$s" | truncate_text 60)
+        if [ -n "$desc" ]; then
+            printf '  %-16s %s\n' "$s" "$desc"
+        else
+            printf '  %s\n' "$s"
+        fi
     done
 }
 
@@ -253,12 +269,12 @@ interactive_mode() {
     printf '%s\n' "$skills" | while read -r s; do
         count=$((count + 1))
         local desc
-        desc=$(get_skill_description "$s")
-        printf '  %d) %s\n' "$count" "$s"
+        desc=$(get_skill_description "$s" | truncate_text 50)
         if [ -n "$desc" ]; then
-            printf '     %s\n' "$desc"
+            printf '  %d) %-16s %s\n' "$count" "$s" "$desc"
+        else
+            printf '  %d) %s\n' "$count" "$s"
         fi
-        printf '\n'
     done
 
     # rebuild count and indexed list outside subshell
