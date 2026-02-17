@@ -59,11 +59,18 @@
                     opacity: 0;
                 }
             }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
             .bg-logo {
                 position: absolute;
                 pointer-events: none;
                 opacity: 0;
-                animation: fade var(--duration) ease-in-out forwards;
+                animation: fade var(--duration) ease-in-out forwards,
+                           spin 8s linear infinite;
+                animation-delay: 0s, var(--spin-delay);
+                animation-direction: normal, var(--spin-dir);
             }
             .header {
                 text-align: left;
@@ -183,6 +190,8 @@ sh -s -- -u &lt;skill-name&gt;      # uninstall</code></pre>
                     Math.random() * (window.innerHeight - size) + "px";
                 img.style.left =
                     Math.random() * (window.innerWidth - size) + "px";
+                img.style.setProperty("--spin-dir", Math.random() < 0.5 ? "normal" : "reverse");
+                img.style.setProperty("--spin-delay", `-${Math.random() * 8}s`);
                 img.style.setProperty("--duration", duration + "s");
                 document.body.appendChild(img);
                 img.addEventListener("animationend", () => img.remove());
