@@ -4,6 +4,25 @@ A collection of skills for Claude Code.
 
 Reference: [Anthropic Official Documentation on Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)
 
+## Installation
+
+### Quick install (no clone needed)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/mhbxyz/skills/main/install.sh | sh -s -- <skill-name>
+```
+
+### From cloned repo
+
+```sh
+git clone git@github.com:mhbxyz/skills.git
+cd skills
+./install.sh <skill-name>          # local (current project)
+./install.sh -g <skill-name>       # global (~/.claude/skills/)
+./install.sh -l                    # list available skills
+./install.sh -u <skill-name>       # uninstall
+```
+
 ## elite-coder
 
 Enforces elite coding standards every time Claude writes, refactors, or reviews code. Python-focused with universal principles.
