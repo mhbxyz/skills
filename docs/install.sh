@@ -12,6 +12,7 @@ BRANCH="main"
 SKILLS_SUBDIR="src"
 TARBALL_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/archive/refs/heads/${BRANCH}.tar.gz"
 TREE_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees/${BRANCH}?recursive=1"
+RAW_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}"
 
 # -- Utilities ----------------------------------------------------------------
 
@@ -26,6 +27,19 @@ die() {
 
 has_cmd() {
     command -v "$1" >/dev/null 2>&1
+}
+
+extract_description() {
+    sed -n '/^description:/{
+        s/^description: *>* *//
+        /./p
+        :loop
+        n
+        /^  /!q
+        s/^  *//
+        p
+        b loop
+    }' | tr '\n' ' ' | sed 's/  */ /g;s/^ *//;s/ *$//'
 }
 
 fetch_url() {
@@ -68,6 +82,7 @@ Examples:
   install.sh -l                              # list available skills
   install.sh -u elite-coder                  # uninstall
   install.sh elite-coder other-skill         # install multiple skills
+  install.sh                                 # interactive mode
 
   # One-liner (no clone needed):
   curl -fsSL mhbxyz.github.io/skills/install.sh | sh -s -- elite-coder
@@ -94,6 +109,15 @@ detect_skills_remote() {
     printf '%s\n' "$json" \
         | grep -o "\"path\":\"${SKILLS_SUBDIR}/[^\"/]*/SKILL\.md\"" \
         | sed "s/\"path\":\"${SKILLS_SUBDIR}\///;s/\/SKILL\.md\"//"
+}
+
+get_skill_description() {
+    local skill="$1"
+    if is_local_repo; then
+        extract_description < "$SCRIPT_DIR/$SKILLS_SUBDIR/$skill/SKILL.md"
+    else
+        fetch_url "$RAW_URL/$SKILLS_SUBDIR/$skill/SKILL.md" | extract_description
+    fi
 }
 
 list_skills() {
@@ -205,6 +229,80 @@ uninstall_skill() {
     msg "uninstalled $skill from $dest"
 }
 
+# -- Interactive --------------------------------------------------------------
+
+interactive_mode() {
+    if [ ! -t 0 ] && [ ! -e /dev/tty ]; then
+        die "no skill specified (use --list to see available skills)"
+    fi
+
+    local skills
+    if is_local_repo; then
+        skills=$(detect_skills_local)
+    else
+        skills=$(detect_skills_remote)
+    fi
+    if [ -z "$skills" ]; then
+        die "no skills found"
+    fi
+
+    local count=0
+    local skill_list=""
+    msg "Available skills:"
+    msg ""
+    printf '%s\n' "$skills" | while read -r s; do
+        count=$((count + 1))
+        local desc
+        desc=$(get_skill_description "$s")
+        printf '  %d) %s\n' "$count" "$s"
+        if [ -n "$desc" ]; then
+            printf '     %s\n' "$desc"
+        fi
+        printf '\n'
+    done
+
+    # rebuild count and indexed list outside subshell
+    count=0
+    skill_list=""
+    for s in $skills; do
+        count=$((count + 1))
+        skill_list="$skill_list $s"
+    done
+    skill_list="${skill_list# }"
+
+    printf 'Select skills to install (comma-separated, e.g. 1,2): '
+    local selection
+    read -r selection </dev/tty
+
+    if [ -z "$selection" ]; then
+        die "no selection made"
+    fi
+
+    local nums
+    nums=$(printf '%s' "$selection" | tr ',' ' ')
+
+    for num in $nums; do
+        case "$num" in
+            ''|*[^0-9]*) die "invalid selection: $num" ;;
+        esac
+        if [ "$num" -lt 1 ] || [ "$num" -gt "$count" ]; then
+            die "selection out of range: $num (1-$count)"
+        fi
+
+        local i=0
+        local chosen=""
+        for s in $skill_list; do
+            i=$((i + 1))
+            if [ "$i" -eq "$num" ]; then
+                chosen="$s"
+                break
+            fi
+        done
+
+        install_skill "$chosen"
+    done
+}
+
 # -- Main ---------------------------------------------------------------------
 
 # Detect script directory (empty when piped via curl)
@@ -254,7 +352,8 @@ case "$ACTION" in
         ;;
     install)
         if [ -z "$SKILLS" ]; then
-            die "no skill specified (use --list to see available skills)"
+            interactive_mode
+            exit 0
         fi
         for skill in $SKILLS; do
             install_skill "$skill"
