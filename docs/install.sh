@@ -107,8 +107,8 @@ detect_skills_remote() {
     local json
     json=$(fetch_url "$TREE_API_URL") || die "failed to fetch skill list from GitHub"
     printf '%s\n' "$json" \
-        | grep -o "\"path\":\"${SKILLS_SUBDIR}/[^\"/]*/SKILL\.md\"" \
-        | sed "s/\"path\":\"${SKILLS_SUBDIR}\///;s/\/SKILL\.md\"//"
+        | grep -o "\"path\": *\"${SKILLS_SUBDIR}/[^\"/]*/SKILL\.md\"" \
+        | sed "s/\"path\": *\"${SKILLS_SUBDIR}\///;s/\/SKILL\.md\"//"
 }
 
 get_skill_description() {
